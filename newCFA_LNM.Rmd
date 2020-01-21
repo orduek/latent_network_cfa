@@ -41,7 +41,7 @@ require(lavaan)
 3.  Compare different estimation techniques
 3.1  PCL Network
 4. Estiamte Networks incl. centrality and stability analyses
-4.1 PCL Network 
+4.1 PCL Network
 5. Confirmatory Network Analysis
 5.1 PCL Network
 6. Community Analysis
@@ -112,10 +112,6 @@ nrow(pclItems_noCluster)
 pclItems_noCluster <- na.omit(pclItems_noCluster)
 nrow(pclItems_noCluster)
 
-
-pclPHQNetwork_noCluster <- dplyr::select(pclPHQNetwork, starts_with("PCL"), -PCLFY, -PCLSURVEYDATE, -PCLRAWSCORE, -PCL_PHQdiff, PHQ1,PHQ2,PHQ3, PHQ4,PHQ5,PHQ6,PHQ7,PHQ8,PHQ9)
-pclPHQNetwork_noCluster <- na.omit(pclPHQNetwork_noCluster)
-
 ```
 
 ## 3.  Compare different estimation techniques 
@@ -124,8 +120,6 @@ pclPHQNetwork_noCluster <- na.omit(pclPHQNetwork_noCluster)
 #### We compare several models to set the one's we would use thorugh the rest of analysis
 #### First we do it on the PCL items alone (whole 150k)
 ```{r}
-
-
 ### A. Gaussian Graphical Model, regularized
 df2 <- pclItems_noCluster
 
@@ -163,16 +157,6 @@ summary(E, summarize = T, log = TRUE, digits = 2)  # log TRUE: BF= ln(BF), BF_10
 # Plot
 g6 <- qgraph(E$partials_non_zero, legend = FALSE, layout = g2$layout, theme = "colorblind", labels = labels)
 
-
-### Bayesian R2 ### - DOES NOT WORK AT THE MOMENT!
-# Compute Bayes R2 #
-# fit_R2 <- estimate(df2, iter = 5000)
-# The following code gives me an error: no applicable method for 'predict' applied to an object of class "estimate". Tobias, do you have any idea?
-# R2 <- predict(fit_R2,
-#               ci_width = 0.90,
-#               samples = 1000,
-#               measure = "R2")
-
 ```
 
 #### Correlate the different networks with the first network (EBIC, spearman) to check similarity
@@ -186,58 +170,10 @@ cor(vechs(n5_2$mat_mean), vechs(n2$graph), method = "spearman") #
 cor(vechs(E$partials_non_zero), vechs(n2$graph), method = "spearman") #0.95
 
 # Looks like all networks are highly correlated with each other. 
-# We choose n2 from here on, alt### Only PCL has three clusters (when EGA load is set to 0.7 )
-## We should compare the confirmatory analysis of PTSD (PCL) based on the EGA with one based on the 5-factor model
-
-```{r}
-# gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),"Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17))
-model_5Factor <- ' ReExperiencing =~ PCL1 + PCL2 + PCL3 + PCL4 + PCL5
-Avoidance =~ PCL6 + PCL7
-Numbing =~ PCL8 + PCL9 + PCL10 + PCL11 + PCL12
-DysphoricArousal =~ PCL13 + PCL14 + PCL15
-AnxiousArousal =~ PCL16 + PCL17 '
-theoModel <- cfa(model_5Factor, data = df2, estimator = "WLSMV")
-
-# fit measures of 5 factor model
-fitMeasures(theoModel, c("chisq","df","pvalue","srmr","cfi","rmsea"))
-# fit measures of EGA
-fitMeasures(pclCFA_glasso$fit, c("chisq","df","pvalue","srmr","cfi","rmsea"))
-# seems like 5 models has a bit better fit
-fitMeasures(pclCFA_TMFG$fit, c("chisq","df","pvalue","srmr","cfi","rmsea"))
-
-# seems like TMGF is the worst option
-
-# Lets run Chisq to compare each model
-
-lavTestLRT(theoModel,pclCFA_TMFG$fit)
-lavTestLRT(theoModel,pclCFA_glasso$fit)
-```
-## Lets plot the theoretical modeling, just for the sake of plotting
-```{r}
-semPlot::semPaths(theoModel, what = "est", layout = "spring", theme = "colorblind")#, title = FALSE, curvePivot = TRUE)
-```
-## We can next compare it with the DSM-IV model (3 factors)
-```{r}
-#gr_likeDSM <- list("Intrusion"=c(1:5), "Avoidance"=c(6:12), "Arousal"=c(13:17)) #PTSD symptoms categories B C D
-dsm_Model <- 'Intrusion =~ PCL1 + PCL2 + PCL3 + PCL4 + PCL5 
-Avoidance =~ PCL6 + PCL7 + PCL8 + PCL9 + PCL10 + PCL11 + PCL12
-Arousal =~ PCL13 + PCL14 + PCL15 + PCL16 + PCL17'
-
-DSMModel <- cfa(dsm_Model, data = df2, estimator = "WLSMV")
-fitMeasures(DSMModel, c("chisq","df","pvalue","srmr","cfi","rmsea"))
-lavTestLRT(theoModel,DSMModel)
-lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
-```
-5-factor model outperform theoretical model. 
-
-
-## 7. Session info
-```{r}
-session_info()
-```hough looks like all are very similar - do you suggest different network to go with? TOBIAS: I think it doesn't matter
+# We choose n2 from here on, alt
 ```
 
-#### Estiamte Predictability (using mgm) - TOBIAS' SUGGESTION
+#### Estiamte Predictability (using mgm)
 ```{r}
 fit1 <- mgm(data = na.omit(df2), type = rep('g', 17), lambdaSel = 'CV', level = rep(1,17), k = 3)
 pred1 <- predict(fit1, na.omit(df2), errorCon = "R2")
@@ -248,12 +184,13 @@ pred1$errors #list with predcitability for each node
 R2_1<-as.numeric(pred1$errors$R2)
 mean(R2_1) # 0.464
 
-
-# ## Plot network and save as PDF - for now plotting here only. 
-# pdf("PCL_Network_predictab.pdf", width=10, height=10)
+# ## Plot network and save as PDF 
 g2 <- plot(n2, pie=R2_1, title="PCL-Network", legend.cex=.5, vsize=7)
-#dev.off()
+
 ```
+
+<br/><br/>
+<br/><br/>
 
 ## 4. Estiamte Networks incl. centrality and stability analyses
 ### 4.1 PCL Network
@@ -263,8 +200,6 @@ gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(
 gr_likeDSM <- list("Intrusion"=c(1:5), "Avoidance"=c(6:12), "Arousal"=c(13:17)) #PTSD symptoms categories B C D
 
 g2 <- plot(n2, pie=R2_1, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr1)
-
-# Currently no predictability analysis. We should discuss if we want to include it
 ```
 
 #### Centrality graph of PCL network:
@@ -283,10 +218,6 @@ plot(boot1, labels = F, order = "sample")  + theme_minimal()
 # now lets look at subjects
 boot2 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "case")
 plot(boot2, labels = F, order = "sample") + theme_minimal()
-
-# Measure Centrality stability
-#boot3 <- bootnet(n2, nCores = 6, nBoots = 1000, statistics = "strength", type = "case")
-#plot(boot3, labels = F, order = "sample") + theme_minimal()
 
 #plot sig diff edges
 plot(boot1, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
@@ -345,7 +276,6 @@ compare(train = model_frombootnet , test = confirmatory)
 ## 6. Community Analysis
 #### Data driven clustering using EGA
 ```{r}
-
 # Cluster only PCL
 egaPCL_glasso<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "glasso")
 egaPCL_TMFG<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "TMFG")
