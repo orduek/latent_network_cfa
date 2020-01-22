@@ -5,54 +5,52 @@ output:
 html_document:
 df_print: paged
 ---
+ 
+##############################################################################
+#									                                                                   #
+#                 Factor vs (Latent) Network models of PTSD                  #
+#                                                                            #
+#                       Code Version 0.1.1 (22.01.2020)                      #
+#                                                                            #
+##############################################################################
 
-## 1. Load libraries
+
+## Table of Contents
+#----- 1. Load libraries ----------------------------------------------------#
+#----- 2. Import and prepare data  & descriptives ---------------------------#
+#----- 3. Compare different estimation techniques ---------------------------#
+#----- 4. Estiamte Networks incl. centrality and stability analyses ---------#
+#----- 5. Community Analysis ------------------------------------------------#
+#----- 6. Confirmatory  Analyses --------------------------------------------#
+#----- 7. Session infos -----------------------------------------------------#
+#----- 8. Open Questions ----------------------------------------------------#
+
+
+## 1. Load libraries ####
 ```{r}
 # Data handeling
-# if(!require("tidyverse")) install.packages("tidyverse")
-# if(!require("corrplot")) install.packages("corrplot")  ## correlation matrix plots
-# if(!require("OpenMX")) install.packages("OpenMx") 
-# 
-# # Network packages
- if(!require("qgraph")) install.packages("qgraph")
- if(!require("psychonetrics")) install.packages("psychonetrics")
- if(!require("bootnet")) install.packages("bootnet")
- if(!require("mgm")) install.packages("mgm")
- if(!require("networktools")) install.packages("networktools")
- if(!require("EGAnet")) install.packages("EGAnet")
+if(!require("tidyverse")) install.packages("tidyverse")
+if(!require("corrplot")) install.packages("corrplot") 
+if(!require("OpenMX")) install.packages("OpenMx") 
 
-# devtools::install_github("donaldRwilliams/BGGM", force = TRUE)
-# devtools::install_github("donaldRwilliams/GGMnonreg", force = TRUE)
-library(BGGM)
-library(GGMnonreg)
+# Network packages
+if(!require("qgraph")) install.packages("qgraph")
+if(!require("psychonetrics")) install.packages("psychonetrics")
+if(!require("bootnet")) install.packages("bootnet")
+if(!require("mgm")) install.packages("mgm")
+if(!require("networktools")) install.packages("networktools")
+if(!require("EGAnet")) install.packages("EGAnet")
 
-require("tidyverse")
-require("corrplot")
-library(OpenMx)
-library(devtools)
-require(lavaan)
+# SEM
+if(!require("lavaan")) install.packages("lavaan")
 
+# Additional packages
+if(!require("rtf")) install.packages("rtf")
 ```
-# Version 0.1 21.01.2020 - OAD
-  
-## Table of Contents
-1.  Load libraries 
-2.  Import and prepare data  & descriptives
-3.  Compare different estimation techniques
-3.1  PCL Network
-4. Estiamte Networks incl. centrality and stability analyses
-4.1 PCL Network
-5. Confirmatory Network Analysis
-5.1 PCL Network
-6. Community Analysis
-7. Predictability
-8. Session info
-9. Open Questions
-
-<br/><br/>
-<br/><br/>
-
-## 2. Import and prepare data  & descriptives - this is the DSM-IV dataset (big data)
+<br/>
+<br/>
+## 2. Import and prepare data  & descriptives ####
+#### this is the DSM-IV dataset (big data)
 ```{r}
 # load data set
 source('/home/or/Documents/va_data/readData.r')
@@ -60,8 +58,6 @@ source('/home/or/Documents/va_data/readData.r')
 
 #### Data cleanning and descriptive statistics
 ```{r}
-# Addind time difference between PCL and PHQ
-# gather info on both meds and no meda
 
 # all patientes with PTSD and PCLTOT
 pclAll <- dplyr::filter(vaDatclean, !is.na(BPCLTOT))
@@ -77,11 +73,6 @@ pclAll <- filter(pclAll, BPCLTOT >=17)
 pclNetwork <- pclAll
 nrow(pclNetwork)
 hist(pclNetwork$BPCLTOT)
-
-pclNetwork$PCL_PHQdiff <- pclNetwork$PHQSURVEYDATE - pclNetwork$PCLSURVEYDATE
-pclPHQNetwork <- filter(pclNetwork, PCL_PHQdiff <= 14 & PCL_PHQdiff >= 0) # removing patients with more than 14 apart between PHQ9 and PCL-M
-pclPHQNetwork <- filter(pclPHQNetwork, BPCLTOT>=17)
-hist(pclPHQNetwork$PCL_PHQdiff)
 ```
 
 #### Sample descriptives of all subjects
@@ -95,42 +86,35 @@ summary(pclAll$BPCLTOT)
 mean(pclAll$BPCLTOT)
 sd(pclAll$BPCLTOT)
 table(pclAll$FEMALE)
-summary(pclPHQNetwork$PHQSUMTOTAL)
-mean(pclPHQNetwork$PHQSUMTOTAL, na.rm=TRUE)
-sd(pclPHQNetwork$PHQSUMTOTAL, na.rm=TRUE)
-table(pclPHQNetwork$FEMALE)
-
 ```
 
 ```{r}
 # build data set only with PCL items
 pclItems <- dplyr::select(pclAll, starts_with("PCL"))
-pclPHQItems <- dplyr::select(pclPHQNetwork, starts_with("PCL"))
 
 pclItems_noCluster <- dplyr::select(pclItems, -PCLFY, -PCLSURVEYDATE, -PCLRAWSCORE)
 nrow(pclItems_noCluster)
+# Exclude missings
 pclItems_noCluster <- na.omit(pclItems_noCluster)
 nrow(pclItems_noCluster)
-
 ```
-
-## 3.  Compare different estimation techniques 
-### 3.1  PCL Network
-<br/><br/>
+<br/>
+<br/>
+## 3.  Compare different estimation techniques ####
 #### We compare several models to set the one's we would use thorugh the rest of analysis
 #### First we do it on the PCL items alone (whole 150k)
 ```{r}
-### A. Gaussian Graphical Model, regularized
+# Rename dataset
 df2 <- pclItems_noCluster
 
 # Define labels
 labels <- names(df2)
 
+#### Three different methods to estimate GGMs
+### A. Gaussian Graphical Model, regularized
 n2 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=FALSE)
 g2 <- plot(n2, legend.cex=.5, vsize=7)
 # Severely skewed data, so we use Spearman over polychoric correlations here, as recommended (https://psycnet.apa.org/record/2018-13501-001)
-# Warning: Dense network selected. But no negative edges, and bootstrapped edge weights look OK.
-# However, we can still try threshold=TRUE as recommended; see next.
 
 ### B. Gaussian Graphical Model, regularized & thresholded
 n3 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=TRUE)
@@ -139,24 +123,6 @@ g3 <- plot(n3, layout=g2$layout, legend.cex=.5, vsize=7)
 ### C. Robustness: use new estimation procedure ggmModSelect (http://psychosystems.org/qgraph_1.5)
 n4 <- estimateNetwork(df2, default="ggmModSelect", corMethod = "cor", corArgs = list(method="spearman"))
 g4 <- plot(n4, layout=g2$layout, legend.cex=.5, vsize=7)
-
-### D.1 Nonregularized network - I've used this one simply enough - please comment on better methods
-n5 <- GGMregress(df2,IC = "BIC", method= "forward")
-g5 <- qgraph(n5$pcor_or, layout = g2$layout, theme = "colorblind", labels = labels)
-
-### D.2 - TOBIAS' SUGGESTION - Nonregularized network
-n5_2 <- GGMnonreg::GGMboot(df2, alpha = 0.05, sims = 1000)
-g5_2 <- qgraph(n5_2$mat_mean, layout = g2$layout, theme = "colorblind", labels = labels)
-
-### E Bayesian Network
-n6 <- explore(df2, prior_sd = 0.5, iter = 5000, cores = 4)
-# H1 for this network is, that edges are not zero (either negative or positive), H0 is that they are zero #
-E <- BGGM::select(n6, BF_cut = 10, alternative = "two.sided")
-# Summary table of the network ##
-summary(E, summarize = T, log = TRUE, digits = 2)  # log TRUE: BF= ln(BF), BF_10 = evidence for H1, BF_01 = evidence for H0
-# Plot
-g6 <- qgraph(E$partials_non_zero, legend = FALSE, layout = g2$layout, theme = "colorblind", labels = labels)
-
 ```
 
 #### Correlate the different networks with the first network (EBIC, spearman) to check similarity
@@ -165,24 +131,9 @@ cor(vechs(n2$graph), vechs(n4$graph)) # 0.997
 cor(vechs(n2$graph), vechs(n4$graph), method="spearman") # 0.993
 cor(vechs(n2$graph), vechs(n3$graph), method="spearman") #0.99
 cor(vechs(n4$graph), vechs(n3$graph), method="spearman") #0.989
-cor(vechs(n5$pcor_or), vechs(n2$graph), method = "spearman") #0.958
-cor(vechs(n5_2$mat_mean), vechs(n2$graph), method = "spearman") #
-cor(vechs(E$partials_non_zero), vechs(n2$graph), method = "spearman") #0.95
 
 # Looks like all networks are highly correlated with each other. 
-# We choose n2 from here on, alt
 ```
-
-#### Estiamte Predictability (using mgm)
-```{r}
-fit1 <- mgm(data = na.omit(df2), type = rep('g', 17), lambdaSel = 'CV', level = rep(1,17), k = 3)
-pred1 <- predict(fit1, na.omit(df2), errorCon = "R2")
-
-pred1$errors #list with predcitability for each node
-
-# Average node predictability #
-R2_1<-as.numeric(pred1$errors$R2)
-mean(R2_1) # 0.464
 
 # ## Plot network and save as PDF 
 g2 <- plot(n2, pie=R2_1, title="PCL-Network", legend.cex=.5, vsize=7)
@@ -191,49 +142,89 @@ g2 <- plot(n2, pie=R2_1, title="PCL-Network", legend.cex=.5, vsize=7)
 
 <br/><br/>
 <br/><br/>
-
-## 4. Estiamte Networks incl. centrality and stability analyses
-### 4.1 PCL Network
+## 4. Estiamte Networks incl. centrality and stability analyses ####
 ```{r network_pcl}
-# building two kinds of group clusters. One (gr1) taken from Harpaz-Rotem, I., Tsai, J., Pietrzak, R. H., & Hoff, R. (2014).
-gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),"Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17)) #PTSD Clusters
+# Define 5-factor PTSD model following: Harpaz-Rotem, I., Tsai, J., Pietrzak, R. H., & Hoff, R. (2014).
+gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),
+            "Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17)) 
+# Define DSM PTSD model
 gr_likeDSM <- list("Intrusion"=c(1:5), "Avoidance"=c(6:12), "Arousal"=c(13:17)) #PTSD symptoms categories B C D
 
+#Plot & Save Networks
+pdf("PCL_NW_5_factor.pdf", width=5, height=5)
 g2 <- plot(n2, pie=R2_1, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr1)
-```
+dev.off()
 
-#### Centrality graph of PCL network:
-```{r}
+pdf("PCL_NW_DSM_factor.pdf", width=5, height=5)
+g3 <- plot(n2, pie=R2_1, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr_likeDSM)
+dev.off()
+
+#### Centrality Analyses
 # sort by level of centrality (strength)
-sort(centrality(n2)$OutDegree  , decreasing = T)
+sort(centrality(n2)$OutDegree, decreasing = T) ## TOBIAS: I am not sure if "outdegree" is equal to strength in this case
 # plot centrality
 centralityPlot(n2, include = "all")
-```
 
 #### Stability of PCL network
-```{r}
-# Bootstrap 1:
+# Non-parametric bootstrap
 boot1 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "nonparametric") 
 plot(boot1, labels = F, order = "sample")  + theme_minimal()
-# now lets look at subjects
+# Case-dropping bootstrap
 boot2 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "case")
 plot(boot2, labels = F, order = "sample") + theme_minimal()
 
-#plot sig diff edges
+# Egde sigficance testing
+pdf("PCL_edge_sig.pdf", width=5, height=5)
 plot(boot1, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
+dev.off()
 
-#plot sig diff nodes
-plot(boot1, "Strength") 
+# Strength significance testing
+pdf("PCL_strength_sig.pdf", width=5, height=5)
+plot(boot1, "Strength")
+dev.off()
 ```
 
+## 5. Community Analysis ####
+#### Data driven clustering using EGA
+```{r}
+### use EGA to find clusters using to diff. models
+## Glasso model
+# EGA
+egaPCL_glasso<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "glasso")
+# plot EGA
+plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
+# CFA based on EGA clustered NW
+pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
+# plot CFA 
+plot(pclCFA_glasso, theme="colorblind")
+# bootversion
+bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 5)
+# plot bootversion
+plot(bootEGA_pcl)
 
-## 5. Confirmatory network analysis
+
+## TMFG model
+# EGA
+egaPCL_TMFG<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "TMFG")
+# CFA based on EGA clustered NW
+pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
+
+
+## 6. Confirmatory analyses ####
+# TOBIAS: I would suggest the following steps:
+# 1. Define all models: A: Network (GGM), B: Factor-models (DSM, five-factor model, EGA-model), C: Latent networks (DSM, five-factor model, EGA-model)
+# 2. Estimate all fit indices using "psychonetrics" package
+# 3. Plot all models
+# 4. Test the ones, which can be tested against each other
+# If Karen-Inge has already written this code it would be super nice to adopt
+#
+
 #### We randomly sample 50% of population and run the model, then fit on the other 50%
 <br/><br/>
 <br/><br/>
 ### 5.1 PCL Network
 #### Split Data into Training and Testing in R 
-```{r}
+  ```{r}
 sample_size = floor(0.5*nrow(pclItems_noCluster))
 set.seed(777)
 
@@ -245,6 +236,9 @@ test =pclItems_noCluster[-picked,]
 # Start run confirmatory analysis
 # run model on half the subjects 
 # shuold we consider comparing fit of different sets of models? or is it too much?
+# TOBIAS: We could, although given the sample, they will converge anyhow.
+
+
 #net <-  estimateNetwork(train, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=FALSE)
 net <- estimateNetwork(train, default = "ggmModSelect", verbose = FALSE)
 network <- 1*(net$graph != 0)
@@ -273,26 +267,6 @@ done(rtffile)
 compare(train = model_frombootnet , test = confirmatory)
 ```
 
-## 6. Community Analysis
-#### Data driven clustering using EGA
-```{r}
-# Cluster only PCL
-egaPCL_glasso<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "glasso")
-egaPCL_TMFG<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "TMFG")
-# plot ega gLASSO
-plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
-
-pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
-# plot CFA gLASSO
-plot(pclCFA_glasso, theme="colorblind")
-
-pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
-
-bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 5)
-plot(bootEGA_pcl)
-# bootstrap results in the same structure
-# run cfa on 5 factor model
-```
 
 ### Only PCL has three clusters (when EGA load is set to 0.7 )
 ## We should compare the confirmatory analysis of PTSD (PCL) based on the EGA with one based on the 5-factor model
@@ -300,14 +274,14 @@ plot(bootEGA_pcl)
 ```{r}
 # gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),"Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17))
 model_5Factor <- ' ReExperiencing =~ PCL1 + PCL2 + PCL3 + PCL4 + PCL5
-Avoidance =~ PCL6 + PCL7
-Numbing =~ PCL8 + PCL9 + PCL10 + PCL11 + PCL12
-DysphoricArousal =~ PCL13 + PCL14 + PCL15
-AnxiousArousal =~ PCL16 + PCL17 '
+                        Avoidance =~ PCL6 + PCL7
+                          Numbing =~ PCL8 + PCL9 + PCL10 + PCL11 + PCL12
+                 DysphoricArousal =~ PCL13 + PCL14 + PCL15
+                   AnxiousArousal =~ PCL16 + PCL17 '
 theoModel <- cfa(model_5Factor, data = df2, estimator = "WLSMV")
 
 # fit measures of 5 factor model
-fitMeasures(theoModel, c("chisq","df","pvalue","srmr","cfi","rmsea"))
+fitMeasures(theoModel, c("chisq","df","pvalue","srmr","cfi","rmsea")) #cave: these are not "robust" measures
 # fit measures of EGA
 fitMeasures(pclCFA_glasso$fit, c("chisq","df","pvalue","srmr","cfi","rmsea"))
 # seems like 5 models has a bit better fit
@@ -328,22 +302,25 @@ semPlot::semPaths(theoModel, what = "est", layout = "spring", theme = "colorblin
 ```{r}
 #gr_likeDSM <- list("Intrusion"=c(1:5), "Avoidance"=c(6:12), "Arousal"=c(13:17)) #PTSD symptoms categories B C D
 dsm_Model <- 'Intrusion =~ PCL1 + PCL2 + PCL3 + PCL4 + PCL5 
-Avoidance =~ PCL6 + PCL7 + PCL8 + PCL9 + PCL10 + PCL11 + PCL12
-Arousal =~ PCL13 + PCL14 + PCL15 + PCL16 + PCL17'
+              Avoidance =~ PCL6 + PCL7 + PCL8 + PCL9 + PCL10 + PCL11 + PCL12
+                Arousal =~ PCL13 + PCL14 + PCL15 + PCL16 + PCL17'
 
 DSMModel <- cfa(dsm_Model, data = df2, estimator = "WLSMV")
-fitMeasures(DSMModel, c("chisq","df","pvalue","srmr","cfi","rmsea"))
+fitMeasures(DSMModel, c("chisq","df","pvalue","srmr","cfi","rmsea")) # cave again: these are not robust measures
 lavTestLRT(theoModel,DSMModel)
 lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
 ```
-5-factor model outperform theoretical model. 
+# 5-factor model outperform theoretical model. 
 
 
 ## 7. Session info
 ```{r}
 session_info()
 ```
-
 <br/><br/>
 <br/><br/>
 # 8. Open Questions
+# TOBIAS: 1. I am not sure, if we need to estiamte different GGMs. This will add further complexity to the analyses, 
+#             but I am not sure if anything is gained from it. I would suggest, we will just define, which estimation techique to use.
+#         2. Which fit indices should we use? Currently, these are not "robust". But I lack the experience, to tell if this is important.          
+  
