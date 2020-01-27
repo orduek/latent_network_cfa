@@ -165,7 +165,9 @@ sort(centrality(n2)$OutDegree, decreasing = T) ## TOBIAS: I am not sure if "outd
 centralityPlot(n2, include = "all")
 
 #### Stability of PCL network
+
 # Non-parametric bootstrap
+# Bootstrap 1:
 boot1 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "nonparametric") 
 plot(boot1, labels = F, order = "sample")  + theme_minimal()
 # Case-dropping bootstrap
