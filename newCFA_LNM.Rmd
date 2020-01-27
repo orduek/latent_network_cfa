@@ -315,6 +315,61 @@ lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
 # 5-factor model outperform theoretical model. 
 
 
+
+# ---------------------------------------------------------------------------------------
+# ------------- KIs additions: LNM using psychonetrics ----------------------------------
+# ------------- this is from another script, have done some crude adaptations------------
+# ------------- based on the 5-factor model----------------------------------------------
+# ---------------------------------------------------------------------------------------
+
+# Define the factors (based on the models above): 
+Latents<-c("ReExperiencing", "Avoidance", 
+"Numbing", "DysphoricArousal", "AnxiousArousal")
+
+# Lambda (based on same factor model)
+# There are more elegant ways, but here's the lambda matrix...
+Lambda <- matrix(0,17,5)
+Lambda[1:5,1] <- 1
+Lambda[6:7,2] <- 1
+Lambda[8:12,3] <- 1
+Lambda[13:15, 4] <- 1
+Lambda[16:17,5] <- 1
+
+
+# Run model
+lnmMod <- lnm(train, lambda = Lambda, 
+            latents = Latents, identification = "variance")
+
+lnmMod <- lnmMod %>% runmodel %>% prune(alpha = 0.05)
+
+# Check it out: 
+lnmMod
+lnmMod %>% parameters
+lnmMod %>% MIs
+
+# Plot it:
+# Different options for plotting, can be changed
+qgraph(lnmMod@modelmatrices[[1]]$omega_zeta, labels = Latents,
+       theme = "colorblind", vsize = 10)
+
+# Prune
+lnmModPruned<-lnmMod %>% prune(alpha = 0.05)
+lnmModPruned %>% parameters
+
+# Confirmatory on the test set
+# Something's rotten, estimates out of bound, needs to be checked and rewritten
+matrixConfirm<-lnmMod@modelmatrices[[1]]$omega_zeta
+LambdaLNM <- lnmMod@modelmatrices[[1]]$lambda
+confirmatoryLNM <- lvm(test,lambda = LambdaLNM, omega_zeta = matrixConfirm)
+confirmatoryLNM <- confirmatoryLNM %>% runmodel
+
+# Show fit
+confirmatoryLNM %>% fit
+
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+
 ## 7. Session info
 ```{r}
 session_info()
