@@ -1,16 +1,16 @@
 ---
 title: "Analyses for latent-network/confirmatory factor analysis/ Exploratory graph analysis paper"
-author: "Or Duek & Tobias R. Spiller"
+author: "Or Duek, Tobias R. Spiller & Karen-Inge Karstoft"
 output:
 html_document:
 df_print: paged
 ---
- 
+  
 ##############################################################################
 #									                                                                   #
 #                 Factor vs (Latent) Network models of PTSD                  #
 #                                                                            #
-#                       Code Version 0.1.1 (22.01.2020)                      #
+#                       Code Version 0.1.2 (29.01.2020)                      #
 #                                                                            #
 ##############################################################################
 
@@ -211,22 +211,21 @@ egaPCL_TMFG<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "TMFG")
 pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
 ```
 
+
+
 ## 6. Confirmatory analyses ####
 # TOBIAS: I would suggest the following steps:
 # 1. Define all models: A: Network (GGM), B: Factor-models (DSM, five-factor model, EGA-model), C: Latent networks (DSM, five-factor model, EGA-model)
 # 2. Estimate all fit indices using "psychonetrics" package
 # 3. Plot all models
-# 4. Test the ones, which can be tested against each other
-# If Karen-Inge has already written this code it would be super nice to adopt
-#
 
 #### We randomly sample 50% of population and run the model, then fit on the other 50%
 <br/><br/>
 <br/><br/>
 ### 5.1 PCL Network
 #### Split Data into Training and Testing in R 
-
-```{r}
+  
+  ```{r}
 sample_size = floor(0.5*nrow(pclItems_noCluster))
 set.seed(777)
 
@@ -322,30 +321,31 @@ lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
 # ------------- based on the 5-factor model----------------------------------------------
 # ---------------------------------------------------------------------------------------
 
+## Latent Networks
+###----------------------------- 5 factor model --------------------------------------###
 # Define the factors (based on the models above): 
-Latents<-c("ReExperiencing", "Avoidance", 
-"Numbing", "DysphoricArousal", "AnxiousArousal")
+Latents_5_factor<-c("ReExperiencing", "Avoidance", "Numbing", "DysphoricArousal", "AnxiousArousal")
 
 # Lambda (based on same factor model)
 # There are more elegant ways, but here's the lambda matrix...
-Lambda <- matrix(0,17,5)
-Lambda[1:5,1] <- 1
-Lambda[6:7,2] <- 1
-Lambda[8:12,3] <- 1
-Lambda[13:15, 4] <- 1
-Lambda[16:17,5] <- 1
-
+Lambda_5_factor <- matrix(0,17,5)
+Lambda_5_factor[1:5,1] <- 1
+Lambda_5_factor[6:7,2] <- 1
+Lambda_5_factor[8:12,3] <- 1
+Lambda_5_factor[13:15, 4] <- 1
+Lambda_5_factor[16:17,5] <- 1
 
 # Run model
-lnmMod <- lnm(train, lambda = Lambda, 
-            latents = Latents, identification = "variance")
+lnmMod_5_factor <- lnm(train, lambda = Lambda_5_factor, 
+              latents = Latents_5_factor, identification = "variance", latent = "ggm")
 
-lnmMod <- lnmMod %>% runmodel %>% prune(alpha = 0.05)
+# Remove non-sig latent edge:
+lnmMod_5_factor <- lnmMod_5_factor %>% runmodel %>% prune(alpha = 0.05)
 
 # Check it out: 
-lnmMod
-lnmMod %>% parameters
-lnmMod %>% MIs
+lnmMod_5_factor
+lnmMod_5_factor %>% parameters
+lnmMod_5_factor %>% MIs
 
 # Plot it:
 # Different options for plotting, can be changed
@@ -353,11 +353,56 @@ qgraph(lnmMod@modelmatrices[[1]]$omega_zeta, labels = Latents,
        theme = "colorblind", vsize = 10)
 
 # Prune
-lnmModPruned<-lnmMod %>% prune(alpha = 0.05)
-lnmModPruned %>% parameters
+lnmMod_5_factorPruned<-lnmMod_5_factor %>% prune(alpha = 0.05)
+lnmMod_5_factorPruned %>% parameters
 
+###----------------------------- DSM 4 factor model --------------------------------------###
+# Define the factors (based on the models above): 
+Latents_DSM <- c("Intrusion", "Avoidance", "Arousal")
+
+# Lambda (based on same factor model)
+# There are more elegant ways, but here's the lambda matrix...
+Lambda_DSM <- matrix(0,17,4)
+Lambda_DSM[1:5,1] <- 1
+Lambda_DSM[6:12,2] <- 1
+Lambda_DSM[13:17,3] <- 1
+
+# Run model
+lnmMod_DSM <- lnm(train, lambda = Lambda_DSM, 
+                       latents = Latents_DSM, identification = "variance", latent = "ggm")
+
+# Remove non-sig latent edge:
+lnmMod_DSM <- lnmMod_DSM %>% runmodel %>% prune(alpha = 0.05)
+
+# Check it out: 
+lnmMod_DSM
+lnmMod_DSM %>% parameters
+lnmMod_DSM %>% MIs
+
+# Plot it:
+# Different options for plotting, can be changed
+qgraph(lnmMod__DSM@modelmatrices[[1]]$omega_zeta, labels = Latents,
+       theme = "colorblind", vsize = 10)
+
+# Prune
+lnmMod_DSMPruned<-lnmMod_DSM %>% prune(alpha = 0.05)
+lnmMod_DSMPruned %>% parameters
+
+## Latent Networks
+###----------------------------- EGA model --------------------------------------###
+# Define the factors (based on the EGA above): 
+#
+#
+#
+#
+#
+
+
+
+
+###----------------------------- CONFIRMATORY TESTS --------------------------------------###
 # Confirmatory on the test set
-# Something's rotten, estimates out of bound, needs to be checked and rewritten
+# Something's rotten, estimates out of bound, needs to be checked and rewritten  - TOBIAS: hard to test without the data
 matrixConfirm<-lnmMod@modelmatrices[[1]]$omega_zeta
 LambdaLNM <- lnmMod@modelmatrices[[1]]$lambda
 confirmatoryLNM <- lvm(test,lambda = LambdaLNM, omega_zeta = matrixConfirm)
@@ -366,9 +411,6 @@ confirmatoryLNM <- confirmatoryLNM %>% runmodel
 # Show fit
 confirmatoryLNM %>% fit
 
-# ---------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------
 
 ## 7. Session info
 ```{r}
@@ -380,4 +422,3 @@ session_info()
 # TOBIAS: 1. I am not sure, if we need to estiamte different GGMs. This will add further complexity to the analyses, 
 #             but I am not sure if anything is gained from it. I would suggest, we will just define, which estimation techique to use.
 #         2. Which fit indices should we use? Currently, these are not "robust". But I lack the experience, to tell if this is important.          
-  
