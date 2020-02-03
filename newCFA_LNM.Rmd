@@ -10,7 +10,7 @@ df_print: paged
 #									                                                           #
 #                 Factor vs (Latent) Network models of PTSD                  #
 #                                                                            #
-#                       Code Version 0.1.2 (29.01.2020)                      #
+#                       Code Version 0.1.3 (03.02.2020)                      #
 #                                                                            #
 ##############################################################################
 
@@ -31,8 +31,8 @@ df_print: paged
 # Data handeling
 if(!require("tidyverse")) install.packages("tidyverse")
 if(!require("corrplot")) install.packages("corrplot") 
-if(!require("OpenMX")) install.packages("OpenMx") 
-
+#if(!require("OpenMX")) install.packages("OpenMx") 
+require(OpenMx)
 # Network packages
 if(!require("qgraph")) install.packages("qgraph")
 if(!require("psychonetrics")) install.packages("psychonetrics")
@@ -127,6 +127,7 @@ g4 <- plot(n4, layout=g2$layout, legend.cex=.5, vsize=7)
 
 #### Correlate the different networks with the first network (EBIC, spearman) to check similarity
 ```{r}
+
 cor(vechs(n2$graph), vechs(n4$graph)) # 0.997
 cor(vechs(n2$graph), vechs(n4$graph), method="spearman") # 0.993
 cor(vechs(n2$graph), vechs(n3$graph), method="spearman") #0.99
@@ -134,10 +135,8 @@ cor(vechs(n4$graph), vechs(n3$graph), method="spearman") #0.989
 
 # Looks like all networks are highly correlated with each other. 
 
-# ## Plot network and save as PDF 
-g2 <- plot(n2, pie=R2_1, title="PCL-Network", legend.cex=.5, vsize=7)
-
 ```
+## Tobias - you have removed the predictability analysis here - do you both think its unnecessary?
 
 <br/><br/>
 <br/><br/>
@@ -151,18 +150,18 @@ gr_likeDSM <- list("Intrusion"=c(1:5), "Avoidance"=c(6:12), "Arousal"=c(13:17)) 
 
 #Plot & Save Networks
 pdf("PCL_NW_5_factor.pdf", width=5, height=5)
-g2 <- plot(n2, pie=R2_1, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr1)
+g2 <- plot(n2,  legend.cex=.5, vsize=7, theme = "colorblind", groups = gr1)
 dev.off()
 
 pdf("PCL_NW_DSM_factor.pdf", width=5, height=5)
-g3 <- plot(n2, pie=R2_1, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr_likeDSM)
+g3 <- plot(n2, legend.cex=.5, vsize=7, theme = "colorblind", groups = gr_likeDSM)
 dev.off()
 
 #### Centrality Analyses
 # sort by level of centrality (strength)
 sort(centrality(n2)$OutDegree, decreasing = T) ## TOBIAS: I am not sure if "outdegree" is equal to strength in this case
 # plot centrality
-centralityPlot(n2, include = "all")
+centralityPlot(n2, include = c("ExpectedInfluence", "Strength")) # changed centrality measures as suggested by Tobias.
 
 #### Stability of PCL network
 
@@ -225,7 +224,7 @@ pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = TRUE, estimator =
 ### 5.1 PCL Network
 #### Split Data into Training and Testing in R 
   
-  ```{r}
+```{r}
 sample_size = floor(0.5*nrow(pclItems_noCluster))
 set.seed(777)
 
@@ -323,6 +322,8 @@ lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
 
 ## Latent Networks
 ###----------------------------- 5 factor model --------------------------------------###
+
+```{r}
 # Define the factors (based on the models above): 
 Latents_5_factor<-c("ReExperiencing", "Avoidance", "Numbing", "DysphoricArousal", "AnxiousArousal")
 
@@ -336,8 +337,7 @@ Lambda_5_factor[13:15, 4] <- 1
 Lambda_5_factor[16:17,5] <- 1
 
 # Run model
-lnmMod_5_factor <- lnm(train, lambda = Lambda_5_factor, 
-              latents = Latents_5_factor, identification = "variance", latent = "ggm")
+lnmMod_5_factor <- lnm(train, lambda = Lambda_5_factor, latents = Latents_5_factor, identification = "variance" )
 
 # Remove non-sig latent edge:
 lnmMod_5_factor <- lnmMod_5_factor %>% runmodel %>% prune(alpha = 0.05)
@@ -349,12 +349,16 @@ lnmMod_5_factor %>% MIs
 
 # Plot it:
 # Different options for plotting, can be changed
-qgraph(lnmMod@modelmatrices[[1]]$omega_zeta, labels = Latents,
+qgraph(lnmMod_5_factor@modelmatrices[[1]]$omega_zeta, labels = Latents_5_factor,
        theme = "colorblind", vsize = 10)
 
 # Prune
 lnmMod_5_factorPruned<-lnmMod_5_factor %>% prune(alpha = 0.05)
 lnmMod_5_factorPruned %>% parameters
+
+```
+
+```{r}
 
 ###----------------------------- DSM 4 factor model --------------------------------------###
 # Define the factors (based on the models above): 
@@ -362,14 +366,14 @@ Latents_DSM <- c("Intrusion", "Avoidance", "Arousal")
 
 # Lambda (based on same factor model)
 # There are more elegant ways, but here's the lambda matrix...
-Lambda_DSM <- matrix(0,17,4)
+Lambda_DSM <- matrix(0,17,3)
 Lambda_DSM[1:5,1] <- 1
 Lambda_DSM[6:12,2] <- 1
 Lambda_DSM[13:17,3] <- 1
 
 # Run model
 lnmMod_DSM <- lnm(train, lambda = Lambda_DSM, 
-                       latents = Latents_DSM, identification = "variance", latent = "ggm")
+                       latents = Latents_DSM, identification = "variance")
 
 # Remove non-sig latent edge:
 lnmMod_DSM <- lnmMod_DSM %>% runmodel %>% prune(alpha = 0.05)
@@ -381,35 +385,60 @@ lnmMod_DSM %>% MIs
 
 # Plot it:
 # Different options for plotting, can be changed
-qgraph(lnmMod__DSM@modelmatrices[[1]]$omega_zeta, labels = Latents,
+qgraph(lnmMod_DSM@modelmatrices[[1]]$omega_zeta, labels = Latents_DSM,
        theme = "colorblind", vsize = 10)
 
 # Prune
 lnmMod_DSMPruned<-lnmMod_DSM %>% prune(alpha = 0.05)
 lnmMod_DSMPruned %>% parameters
 
+
+```
+
+```{r}
 ## Latent Networks
 ###----------------------------- EGA model --------------------------------------###
 # Define the factors (based on the EGA above): 
-#
-#
-#
-#
-#
+ega_factors <- matrix(0,17,3)
+ega_factors[1:7,1] <- 1
+ega_factors[8:12,2] <- 1
+ega_factors[14,2] <- 1
+ega_factors[c(13,16,17),3] <- 1
 
+latents_ega = c("Reexp", "mood","Arousal")
+lnmMod_EGA <- lnm(train, lambda = ega_factors, 
+                       latents = latents_ega, identification = "variance")
 
+# Remove non-sig latent edge:
+lnmMod_EGA <- lnmMod_EGA %>% runmodel %>% prune(alpha = 0.05)
+
+# Check it out: 
+lnmMod_EGA
+lnmMod_EGA %>% parameters
+lnmMod_EGA %>% MIs
+
+# Plot it:
+# Different options for plotting, can be changed
+qgraph(lnmMod_EGA@modelmatrices[[1]]$omega_zeta, labels = latents_ega,
+       theme = "colorblind", vsize = 10)
+
+# Prune
+lnmMod_EGAPruned<-lnmMod_EGA %>% prune(alpha = 0.05)
+lnmMod_EGAPruned %>% parameters
 
 
 ###----------------------------- CONFIRMATORY TESTS --------------------------------------###
 # Confirmatory on the test set
 # Something's rotten, estimates out of bound, needs to be checked and rewritten  - TOBIAS: hard to test without the data
-matrixConfirm<-lnmMod@modelmatrices[[1]]$omega_zeta
-LambdaLNM <- lnmMod@modelmatrices[[1]]$lambda
-confirmatoryLNM <- lvm(test,lambda = LambdaLNM, omega_zeta = matrixConfirm)
+matrixConfirm<-lnmMod_EGA@modelmatrices[[1]]$omega_zeta
+LambdaLNM <- lnmMod_EGA@modelmatrices[[1]]$lambda
+confirmatoryLNM <- lvm(test,lambda = ega_factors, omega_zeta = matrixConfirm)
 confirmatoryLNM <- confirmatoryLNM %>% runmodel
 
 # Show fit
 confirmatoryLNM %>% fit
+
+```
 
 
 ## 7. Session info
