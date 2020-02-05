@@ -46,6 +46,7 @@ if(!require("lavaan")) install.packages("lavaan")
 
 # Additional packages
 if(!require("rtf")) install.packages("rtf")
+require(xfun)
 ```
 <br/>
 <br/>
