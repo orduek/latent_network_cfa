@@ -316,7 +316,7 @@ lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
 # DSM vs 5-factor vs. TGF - glasso model
 lavTestLRT(DSMModel,pclCFA_TMFG$fit, method ="satorra.2000")
 ```
-The **five factor model outperforms ** the other ones.    
+The **five factor model outperforms** the other ones.    
 Lets plot the five factor model.
 ```{r}
 semPlot::semPaths(theoModel, what = "est", layout = "spring", theme = "colorblind")#, title = FALSE, curvePivot = TRUE)
