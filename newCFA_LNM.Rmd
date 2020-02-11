@@ -11,7 +11,7 @@ df_print: paged
 
 
 ## 1. Load libraries
-```{r eval = FALSE}
+```{r results = 'hide', echo=FALSE}
 # Data handeling
 if(!require("tidyverse")) install.packages("tidyverse")
 if(!require("corrplot")) install.packages("corrplot") 
@@ -35,12 +35,16 @@ if(!require("rtf")) install.packages("rtf")
 require(xfun)
 ```
 <br><br><br>
+
 ## 2. Import and prepare data  & descriptives
-```{r eval = FALSE}
+
 load data set - this is the DSM-IV dataset (big data)
+```{r results = 'hide', echo=FALSE}
 source('/home/or/Documents/va_data/readData.r')
 ```
+
 #### Data cleanning and descriptive statistics
+
 ```{r, hist, fig.witdh = 4, fig.height = 3, message = FALSE}
 # all patientes with PTSD and PCLTOT
 pclAll <- dplyr::filter(vaDatclean, !is.na(BPCLTOT))
@@ -57,6 +61,7 @@ pclNetwork <- pclAll
 nrow(pclNetwork)
 hist(pclNetwork$BPCLTOT)
 ```
+
 #### Sample descriptives of all subjects
 gather info on both meds and no meds  
 remove patients with more than 14 days apart PHQ and PCL
@@ -82,18 +87,21 @@ nrow(pclItems_noCluster_incl_missing)
 nrow(pclItems_noCluster)
 ```
 <br><br><br>
+
 ## 3.  Compare different estimation techniques
+
 We compare several models to set the one's we would use thorugh the rest of analysis  
 First we do it on the PCL items alone (whole 150k)  
 We use three different method to estimate GGMs
-```{r eval = FALSE}
+
+```{r eval = TRUE, results = 'hide', echo=FALSE}
 # Rename dataset
 df2 <- pclItems_noCluster
 # Define labels
 labels <- names(df2)
 ```
 ### A. Gaussian Graphical Model, regularized
-```{r eval = FALSE}
+```{r eval=TRUE, results = 'hide'}
 n2 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=FALSE)
 ```
 Plot
@@ -103,21 +111,23 @@ g2 <- plot(n2, legend.cex=.5, vsize=7)
 Severely skewed data, so we use Spearman over polychoric correlations here, as recommended (https://psycnet.apa.org/record/2018-13501-001)  
 
 ### B. Gaussian Graphical Model, regularized & thresholded
-```{r eval = FALSE}
+```{r eval=TRUE, results ='hide', echo=FALSE}
 n3 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=TRUE)
 ```
 Plot
 ```{r}
 g3 <- plot(n3, layout=g2$layout, legend.cex=.5, vsize=7)
 ```
+
 ### C. Robustness: use new estimation procedure ggmModSelect (http://psychosystems.org/qgraph_1.5)
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide', echo=FALSE}
 n4 <- estimateNetwork(df2, default="ggmModSelect", corMethod = "cor", corArgs = list(method="spearman"))
 ```
 Plot
 ```{r}
 g4 <- plot(n4, layout=g2$layout, legend.cex=.5, vsize=7)
 ```
+
 #### Correlate the different networks with the first network (EBIC, spearman) to check similarity
 ```{r}
 cor(vechs(n2$graph), vechs(n4$graph)) # 0.997
@@ -128,12 +138,13 @@ cor(vechs(n4$graph), vechs(n3$graph), method="spearman") #0.989
 Looks like all networks are highly correlated with each other. 
 
 ### Tobias - you have removed the predictability analysis here - do you both think its unnecessary?
-### T: I think it is not necessary, because predictability for LNMs do not exist - but what do you think KI?
+### T: I think it is not necessary, because predictability for LNMs do not exist - but what do you think KI? 
+### O: I accept Tobias's comment, KI? 
 
 <br><br><br>
 ## 4. Estiamte Networks incl. centrality and stability analyses
 Define 5-factor PTSD model following: Harpaz-Rotem, I., Tsai, J., Pietrzak, R. H., & Hoff, R. (2014).
-```{r network_pcl, eval = FALSE}
+```{r network_pcl, eval = TRUE, results = 'hide', echo=FALSE}
 gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),
             "Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17)) 
 
@@ -152,86 +163,104 @@ dev.off()
 # sort by level of centrality (strength)
 sort(centrality(n2)$OutDegree, decreasing = T) ## TOBIAS: I am not sure if "outdegree" is equal to strength in this case
 ```
-plot centrality
+### 4.1 plot centrality
 ```{r}
 centralityPlot(n2, include = c("ExpectedInfluence", "Strength")) # changed centrality measures as suggested by Tobias.
 ```
 
+# for time - I remove these for now - will put stability back in the last version
+
 #### Stability of PCL network
-```{r network_pcl}
+```{r network_pcl_stability}
 # Non-parametric bootstrap
 # Bootstrap 1:
-boot1 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "nonparametric") 
-plot(boot1, labels = F, order = "sample")  + theme_minimal()
+#boot1 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "nonparametric") 
+#plot(boot1, labels = F, order = "sample")  + theme_minimal()
 # Case-dropping bootstrap
-boot2 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "case")
-plot(boot2, labels = F, order = "sample") + theme_minimal()
+#boot2 <- bootnet(n2, nCores = 6, nBoots = 1000, type = "case")
+#plot(boot2, labels = F, order = "sample") + theme_minimal()
 # Egde sigficance testing
-pdf("PCL_edge_sig.pdf", width=5, height=5)
-plot(boot1, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
-dev.off()
+#pdf("PCL_edge_sig.pdf", width=5, height=5)
+#plot(boot1, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
+#dev.off()
 # Strength significance testing
-pdf("PCL_strength_sig.pdf", width=5, height=5)
-plot(boot1, "Strength")
-dev.off()
+#pdf("PCL_strength_sig.pdf", width=5, height=5)
+#plot(boot1, "Strength")
+#dev.off()
 ```
+``
 <br><br><br>
+
 ## 5. Community Analysis
 use EGA to find clusters using to diff. models
+
 ### A. Glasso models
+
 #### A.1 EGA
-```{r eval = FALSE}
-egaPCL_glasso<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "glasso")
-````
+```{r eval = TRUE, results = 'hide', echo=FALSE}
+egaPCL_glasso<-EGA(df2, plot.EGA = FALSE, steps = 4,  model = "glasso")
+```
 plot EGA
 ```{r}
 plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
 ```
+
 #### A.2 CFA based on EGA clustered NW
-```{r eval = FALSE}
-pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
+```{r eval = TRUE, results = 'hide'}
+pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = FALSE, estimator = "WLSMV") # removed plotting as we do it in next section
 ```
 plot CFA 
-```{r}
+```{r, echo=FALSE}
 plot(pclCFA_glasso, theme="colorblind")
 ```
+
 ### A.3 bootversion
-```{r eval = FALSE}
-bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 5)
+```{r eval = TRUE, results = 'hide', echo=FALSE}
+bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 5,  plot.typicalStructure = FALSE )
 ```
 plot bootversion
 ```{r}
-plot(bootEGA_pcl)
+plot(bootEGA_pcl, theme="colorblind")
 ```
-### B. TMFG models
+
+# Or: I think we can remove the TMFG, unless anyone thinks its relevant
+
+### B. TMFG models -  
+
 #### B.1 EGA
-```{r eval = FALSE}
-egaPCL_TMFG<-EGA(df2, plot.EGA = TRUE, steps = 4,  model = "TMFG")
+
+```{r eval = TRUE, results = 'hide', echo=FALSE}
+egaPCL_TMFG<-EGA(df2, plot.EGA = FALSE, steps = 4,  model = "TMFG")
 ```
 plot TMFG model
 ```{r}
 plot(egaPCL_TMFG)
 ```
+
 #### B.2. CFA based on EGA clustered NW
-```{r eval = FALSE}
-pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = TRUE, estimator = "WLSMV")
+```{r eval = TRUE, results = 'hide', echo=FALSE}
+pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = FALSE, estimator = "WLSMV")
 ```
 plot CFA based on EGA clustered NW
 ```{r}
-plot(pclCFA_TMFG)
+plot(pclCFA_TMFG, theme="colorblind")
 ```
 
 <br><br><br>
+
 ## 6. Factor Analyses
 TOBIAS: I would suggest the following steps:
 1. Define all models: A: Network (GGM), B: Factor-models (DSM, five-factor model, EGA-model), C: Latent networks (DSM, five-factor model, EGA-model)
 2. Estimate all fit indices using "psychonetrics" package
 3. Plot all models  
 
+
+### Or: I think we can remove the split-half for now. I don't see a reason to keep it here - if we want to test generalizability we should use only half and fit every model to the test also. What do you think Tobias? Karen-Inge?
+
 #### Splithalf example
 Split Data into Training and Testing in R  
 We randomly sample 50% of population and run the model, then fit on the other 50
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide', echo=FALSE}
 sample_size = floor(0.5*nrow(pclItems_noCluster))
 set.seed(777)
 # randomly split data in r
@@ -254,7 +283,7 @@ confirmatory <- ggm(test, omega = adjacency)
 confirmatory <- confirmatory %>% runmodel
 confirmatory %>% fit
 ```
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 # saving to word table
 library(rtf)
 rtffile <- RTF("fitResults.doc")  # this can be an .rtf or a .doc
@@ -268,7 +297,7 @@ compare(train = model_frombootnet , test = confirmatory)
 ```
 ### Compare different **factor** models
 #### A. Define models
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 ### 5-factor models
 # gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),"Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17))
 model_5Factor <- ' ReExperiencing =~ PCL1 + PCL2 + PCL3 + PCL4 + PCL5
@@ -326,7 +355,7 @@ semPlot::semPaths(theoModel, what = "est", layout = "spring", theme = "colorblin
 ## 7. Latent Networks
 ### A. 5-factor model
 Frist we define the factors (based on the models above) & then run the model
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 # Factor structre
 Latents_5_factor<-c("ReExperiencing", "Avoidance", "Numbing", "DysphoricArousal", "AnxiousArousal")
 
@@ -358,7 +387,7 @@ lnmMod_5_factorPruned %>% parameters
 
 ### B. DSM 3-factor model
 Frist we define the factors (based on the models above) & then run the model
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 # Factor structre
 Latents_DSM <- c("Intrusion", "Avoidance", "Arousal")
 
@@ -388,7 +417,7 @@ lnmMod_DSMPruned %>% parameters
 ```
 ### C. EGA 3-factor model
 Frist we define the factors (based on the models above) & then run the model
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 # Factor structre
 latents_ega  <- c("ReExperiencing", "Mood", "Arousal")
 
@@ -431,7 +460,7 @@ psychonetrics::compare(lnmMod_DSMPruned, lnmMod_5_factorPruned)
 #### Factor Analysis
 Define models  
 **5 factor model**
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
         "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
 # Define model
@@ -442,7 +471,7 @@ mod_CFA_5 <- mod_CFA_5 %>% runmodel
 mod_CFA_5 <- mod_CFA_5 %>% prune(alpha = 0.05)
 ```
 **DSM factor model**
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
         "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
 # Define model
@@ -453,7 +482,7 @@ mod_CFA_DSM <- mod_CFA_DSM %>% runmodel
 mod_CFA_DSM <- mod_CFA_DSM %>% prune(alpha = 0.05)
 ```
 **EGA factor model**
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
         "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
 # Define model
@@ -467,7 +496,7 @@ mod_CFA_EGA <- mod_CFA_EGA %>% prune(alpha = 0.05)
 #### GGM
 Estimate a GGM using psychonetrics package **NOT** using GLASSO.  
 Define model
-```{r eval = FALSE}
+```{r eval = TRUE, results = 'hide'}
 vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
         "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
 mod_ggm <- ggm(df2, vars = vars, omega = "full")
@@ -493,7 +522,8 @@ psychonetrics::compare(DSM = mod_CFA_DSM, Five = mod_CFA_5)
 # 5 -factor
 psychonetrics::compare(CFA = mod_CFA_5, LNM = lnmMod_5_factorPruned)
 # DSM
-psychonetrics::compare(CFA = mod_CFA_DSM, LNM = lnmMod_DSMPrunedd)
+psychonetrics::compare(CFA = mod_CFA_DSM, LNM = lnmMod_DSMPruned)
+                       
 # EGA
 psychonetrics::compare(CFA = mod_CFA_EGA, LNM = lnmMod_EGAPruned)
 ```
@@ -514,8 +544,10 @@ session_info()
 # 10. Open Questions
 TOBIAS:  
 1. I am not sure, if we need to estiamte different GGMs. This will add further complexity to the analyses, but I am not sure if anything is gained from it. I would suggest, we will just define, which estimation techique to use.  
+Or: Agreed. 
 <br>
 2. Which fit indices should we use? Currently, these are not "robust". But I lack the experience, to tell if this is important. 
 <br>
-3. I am quite sure that the GGM estimated with the psychonetrics package is not equivalent to a GGM estimated by EBICglasso. However, I don't know how to solve this.
+3. I am quite sure that the GGM estimated with the psychonetrics package is not equivalent to a GGM estimated by EBICglasso. However, I don't know how to solve this. 
+O: maybe we can ask Sacha? I was under the impression that if we use the netboot adjacency it will work ok, no?
   
