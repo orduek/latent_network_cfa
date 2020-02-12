@@ -11,7 +11,7 @@ df_print: paged
 
 
 ## 1. Load libraries
-```{r results = 'hide', echo=FALSE}
+```{r results = 'hide', echo=FALSE, message=FALSE}
 # Data handeling
 if(!require("tidyverse")) install.packages("tidyverse")
 if(!require("corrplot")) install.packages("corrplot") 
@@ -39,7 +39,7 @@ require(xfun)
 ## 2. Import and prepare data  & descriptives
 
 load data set - this is the DSM-IV dataset (big data)
-```{r results = 'hide', echo=FALSE}
+```{r results = 'hide', echo=FALSE, message=FALSE}
 source('/home/or/Documents/va_data/readData.r')
 ```
 
@@ -65,7 +65,7 @@ hist(pclNetwork$BPCLTOT)
 #### Sample descriptives of all subjects
 gather info on both meds and no meds  
 remove patients with more than 14 days apart PHQ and PCL
-```{r sample descriptives}
+```{r sample descriptives, echo=FALSE}
 summary(pclAll$AGE_OCT01)
 mean(pclAll$AGE_OCT01, na.rm=TRUE)
 sd(pclAll$AGE_OCT01, na.rm=TRUE)
@@ -101,30 +101,30 @@ df2 <- pclItems_noCluster
 labels <- names(df2)
 ```
 ### A. Gaussian Graphical Model, regularized
-```{r eval=TRUE, results = 'hide'}
+```{r eval=TRUE, results = 'hide', echo=FALSE}
 n2 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=FALSE)
 ```
 Plot
-```{r}
+```{r, echo=FALSE}
 g2 <- plot(n2, legend.cex=.5, vsize=7)
 ```
 Severely skewed data, so we use Spearman over polychoric correlations here, as recommended (https://psycnet.apa.org/record/2018-13501-001)  
 
 ### B. Gaussian Graphical Model, regularized & thresholded
-```{r eval=TRUE, results ='hide', echo=FALSE}
+```{r eval=TRUE, results ='hide', echo=FALSE, message=FALSE}
 n3 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=TRUE)
 ```
 Plot
-```{r}
+```{r, echo=FALSE}
 g3 <- plot(n3, layout=g2$layout, legend.cex=.5, vsize=7)
 ```
 
 ### C. Robustness: use new estimation procedure ggmModSelect (http://psychosystems.org/qgraph_1.5)
-```{r eval = TRUE, results = 'hide', echo=FALSE}
+```{r eval = TRUE, results = 'hide', echo=FALSE, message=FALSE}
 n4 <- estimateNetwork(df2, default="ggmModSelect", corMethod = "cor", corArgs = list(method="spearman"))
 ```
 Plot
-```{r}
+```{r, echo=FALSE}
 g4 <- plot(n4, layout=g2$layout, legend.cex=.5, vsize=7)
 ```
 
@@ -142,6 +142,7 @@ Looks like all networks are highly correlated with each other.
 ### O: I accept Tobias's comment, KI? 
 
 <br><br><br>
+
 ## 4. Estiamte Networks incl. centrality and stability analyses
 Define 5-factor PTSD model following: Harpaz-Rotem, I., Tsai, J., Pietrzak, R. H., & Hoff, R. (2014).
 ```{r network_pcl, eval = TRUE, results = 'hide', echo=FALSE}
@@ -164,11 +165,11 @@ dev.off()
 sort(centrality(n2)$OutDegree, decreasing = T) ## TOBIAS: I am not sure if "outdegree" is equal to strength in this case
 ```
 ### 4.1 plot centrality
-```{r}
+```{r, echo=FALSE}
 centralityPlot(n2, include = c("ExpectedInfluence", "Strength")) # changed centrality measures as suggested by Tobias.
 ```
 
-# for time - I remove these for now - will put stability back in the last version
+# To save time - I remove these for now - will put stability back in the last version
 
 #### Stability of PCL network
 ```{r network_pcl_stability}
@@ -201,7 +202,7 @@ use EGA to find clusters using to diff. models
 egaPCL_glasso<-EGA(df2, plot.EGA = FALSE, steps = 4,  model = "glasso")
 ```
 plot EGA
-```{r}
+```{r, echo=FALSE}
 plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
 ```
 
@@ -209,14 +210,15 @@ plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
 ```{r eval = TRUE, results = 'hide'}
 pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = FALSE, estimator = "WLSMV") # removed plotting as we do it in next section
 ```
+
 plot CFA 
 ```{r, echo=FALSE}
 plot(pclCFA_glasso, theme="colorblind")
 ```
 
 ### A.3 bootversion
-```{r eval = TRUE, results = 'hide', echo=FALSE}
-bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 5,  plot.typicalStructure = FALSE )
+```{r eval = TRUE, results = 'hide', echo=FALSE, message=FALSE}
+bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 4,  plot.typicalStructure = FALSE)
 ```
 plot bootversion
 ```{r}
@@ -456,7 +458,9 @@ psychonetrics::compare(lnmMod_DSMPruned, lnmMod_5_factorPruned)
 
 <br><br><br>
 ## 8. Compare CFA, LNM and GGM
+
 ### 8.A. Redefine models as psychotretics objetcs
+
 #### Factor Analysis
 Define models  
 **5 factor model**
@@ -527,8 +531,11 @@ psychonetrics::compare(CFA = mod_CFA_DSM, LNM = lnmMod_DSMPruned)
 # EGA
 psychonetrics::compare(CFA = mod_CFA_EGA, LNM = lnmMod_EGAPruned)
 ```
+
+### These are exactly the same.
+
 **Compare best fitting LNM and CFA with GGM**
-CURRENTLY NOT CORRET, BECAUSE WE HAVEN'T SEEN THE DATA YET
+
 ```{r}
 psychonetrics::compare(GGM = mod_ggm, LNM = lnmMod_5_factorPruned)
 psychonetrics::compare(GGM = mod_ggm, CFA = mod_CFA_5)
