@@ -209,8 +209,8 @@ plot(egaPCL_glasso, theme = "colorblind", layout =g2$layout)
 ```
 
 #### A.2 CFA based on EGA clustered NW
-```{r eval=TRUE, message=FALSE, results=}
-pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso,data = df2,plot.CFA = FALSE, estimator = "WLSMV") # removed plotting as we do it in next section
+```{r eval=TRUE, message=FALSE, results='hide'}
+pclCFA_glasso <- CFA(ega.obj = egaPCL_glasso, data = df2, plot.CFA = FALSE, estimator = "WLSMV") # removed plotting as we do it in next section
 ```
 
 plot CFA 
@@ -219,38 +219,40 @@ plot CFA
 plot(pclCFA_glasso, theme="colorblind")
 ```
 
+## Removing EGA bootstrap to save time
+
 ### A.3 bootversion
 ```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
-bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 4,  plot.typicalStructure = FALSE)
+#bootEGA_pcl <- bootEGA(df2, 500, type = "resampling", ncores = 4,  plot.typicalStructure = FALSE)
 ```
 plot bootversion
 <br>
 ```{r}
-plot(bootEGA_pcl, theme="colorblind")
+#plot(bootEGA_pcl, theme="colorblind")
 ```
 
 # Or: I think we can remove the TMFG, unless anyone thinks its relevant
 # Tobias: I think so too
 
-### B. TMFG models -  
+### B. EGA with 5 factor defined -  
 
 #### B.1 EGA
 
 ```{r eval = TRUE, results = 'hide', echo=FALSE}
-egaPCL_TMFG<-EGA(df2, plot.EGA = FALSE, steps = 4,  model = "TMFG")
+#egaPCL_5fac<-EGA(df2, plot.EGA = FALSE, steps = 4,  model = "glasso", nfact = 5)
 ```
-plot TMFG model
+plot 5 factor model
 ```{r}
-plot(egaPCL_TMFG)
+#plot(egaPCL_5fac)
 ```
 
 #### B.2. CFA based on EGA clustered NW
 ```{r eval = TRUE, results = 'hide', echo=FALSE}
-pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = FALSE, estimator = "WLSMV")
+#pclCFA_TMFG <- CFA(ega.obj = egaPCL_TMFG,data = df2,plot.CFA = FALSE, estimator = "WLSMV")
 ```
 plot CFA based on EGA clustered NW
 ```{r}
-plot(pclCFA_TMFG, theme="colorblind")
+#plot(pclCFA_TMFG, theme="colorblind")
 ```
 
 <br><br><br>
@@ -286,7 +288,7 @@ confirmatory <- ggm(test, omega = adjacency)
 confirmatory <- confirmatory %>% runmodel
 confirmatory %>% fit
 ```
-```{r, echo = FALSE, eval=TRUE, message=FALSE, results=}
+```{r, echo = FALSE, eval=TRUE, message=FALSE}
 # saving to word table
 library(rtf)
 rtffile <- RTF("fitResults.doc")  # this can be an .rtf or a .doc
@@ -326,27 +328,19 @@ fitMeasures(theoModel, c("chisq","df","pvalue","srmr","cfi","rmsea")) #cave: the
 ```{r, echo=FALSE, message=FALSE}
 fitMeasures(pclCFA_glasso$fit, c("chisq","df","pvalue","srmr","cfi","rmsea"))
 ```
-**B.3 EGA - TMGF model (3 factors)**
-```{r, echo=FALSE, message=FALSE}
-fitMeasures(pclCFA_TMFG$fit, c("chisq","df","pvalue","srmr","cfi","rmsea"))
-```
-**B.4 DSM model (3 factors)**
+**B.3 DSM model (3 factors)**
 ```{r, echo=FALSE, message=FALSE}
 fitMeasures(DSMModel, c("chisq","df","pvalue","srmr","cfi","rmsea")) # cave again: these are not robust measures
 ```
 
-### B.5 Formal test
+### B.4 Formal test
 ```{r}
 # 5-factor vs. DSM model
 lavTestLRT(theoModel,DSMModel)
 # 5-factor vs. EGA - glasso model
-lavTestLRT(theoModel,pclCFA_TMFG$fit)
-# 5-factor vs. EGA - TGMF model
 lavTestLRT(theoModel,pclCFA_glasso$fit)
 # DSM vs 5-factor vs. EGA - glasso model
 lavTestLRT(DSMModel,pclCFA_glasso$fit, method ="satorra.2000")
-# DSM vs 5-factor vs. TGF - glasso model
-lavTestLRT(DSMModel,pclCFA_TMFG$fit, method ="satorra.2000")
 ```
 The **five factor model outperforms** the other ones.    
 Lets plot the five factor model.
@@ -358,7 +352,7 @@ semPlot::semPaths(theoModel, what = "est", layout = "spring", theme = "colorblin
 ## 7. Latent Networks  
 ### A. 5-factor model  
 Frist we define the factors (based on the models above) & then run the model
-```{r eval=TRUE, message=FALSE, results=FALSE}
+```{r eval=TRUE, message=FALSE}
 # Factor structre
 Latents_5_factor<-c("ReExperiencing", "Avoidance", "Numbing", "DysphoricArousal", "AnxiousArousal")
 
@@ -510,7 +504,7 @@ net <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = l
 network <- 1*(net$graph != 0)
 model_frombootnet <- ggm(train, omega = network) %>% runmodel
 # Prune model:
-mod_ggm <- mod_ggm %>% prune(alpha = 0.05)
+mod_ggm <- model_frombootnet %>% prune(alpha = 0.05)
 ```
 ### 8.B compare models
 **Latent networks with each other**
