@@ -503,13 +503,12 @@ mod_CFA_EGA <- mod_CFA_EGA %>% runmodel
 mod_CFA_EGA <- mod_CFA_EGA %>% prune(alpha = 0.05)
 ```
 #### GGM
-Estimate a GGM using psychonetrics package **NOT** using GLASSO.  
+Estimate a GGM using GLASSO and exporting it to psychometrics  
 Define model
 ```{r eval = TRUE, results = 'hide'}
-vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
-        "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
-mod_ggm <- ggm(df2, vars = vars, omega = "full")
-mod_ggm <- mod_ggm %>% runmodel
+net <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=FALSE)
+network <- 1*(net$graph != 0)
+model_frombootnet <- ggm(train, omega = network) %>% runmodel
 # Prune model:
 mod_ggm <- mod_ggm %>% prune(alpha = 0.05)
 ```
@@ -551,17 +550,3 @@ psychonetrics::compare(GGM = mod_ggm, CFA = mod_CFA_5)
 ```{r eval = FALSE}
 session_info()
 ```
-
-<br><br><br>
-# 10. Open Questions  
-<br>
-TOBIAS:  
-1. I am not sure, if we need to estiamte different GGMs. This will add further complexity to the analyses, but I am not sure if anything is gained from it. I would suggest, we will just define, which estimation techique to use.  
-Or: Agreed. 
-T: Which one do you want to use?
-<br>
-2. Which fit indices should we use? Currently, these are not "robust". But I lack the experience, to tell if this is important. 
-<br>
-3. I am quite sure that the GGM estimated with the psychonetrics package is not equivalent to a GGM estimated by EBICglasso. However, I don't know how to solve this. 
-O: maybe we can ask Sacha? I was under the impression that if we use the netboot adjacency it will work ok, no?
-T: That is a good Idea, but maybe KI knows the solution.
