@@ -362,6 +362,10 @@ Frist we define the factors (based on the models above) & then run the model
 # Factor structre
 Latents_5_factor<-c("ReExperiencing", "Avoidance", "Numbing", "DysphoricArousal", "AnxiousArousal")
 
+# Variables
+vars= c("PCL1", "PCL2", "PCL3","PCL4","PCL5","PCL6","PCL7","PCL8" ,"PCL9",
+        "PCL10","PCL11","PCL12","PCL13","PCL14","PCL15","PCL16","PCL17")
+
 # Individual factors
 Lambda_5_factor <- matrix(0,17,5)
 Lambda_5_factor[1:5,1] <- 1
@@ -370,7 +374,7 @@ Lambda_5_factor[8:12,3] <- 1
 Lambda_5_factor[13:15, 4] <- 1
 Lambda_5_factor[16:17,5] <- 1
 # Run model
-lnmMod_5_factor <- lnm(df2, lambda = Lambda_5_factor, latents = Latents_5_factor, identification = "variance" )
+lnmMod_5_factor <- lnm(df2, vars=vars, lambda = Lambda_5_factor, latents = Latents_5_factor, identification = "variance" )
 # Remove non-sig latent edge:
 lnmMod_5_factor <- lnmMod_5_factor %>% runmodel %>% prune(alpha = 0.05)
 ```
@@ -400,7 +404,7 @@ Lambda_DSM[1:5,1] <- 1
 Lambda_DSM[6:12,2] <- 1
 Lambda_DSM[13:17,3] <- 1
 # Run model
-lnmMod_DSM <- lnm(df2, lambda = Lambda_DSM, 
+lnmMod_DSM <- lnm(df2, lambda = Lambda_DSM, vars=vars,
                   latents = Latents_DSM, identification = "variance")
 # Remove non-sig latent edge:
 lnmMod_DSM <- lnmMod_DSM %>% runmodel %>% prune(alpha = 0.05)
@@ -431,7 +435,7 @@ ega_factors[8:12,2] <- 1
 ega_factors[14,2] <- 1
 ega_factors[c(13,16,17),3] <- 1
 # Run model
-lnmMod_EGA <- lnm(df2, lambda = ega_factors, 
+lnmMod_EGA <- lnm(df2, lambda = ega_factors, vars=vars,
                   latents = latents_ega, identification = "variance")
 # Remove non-sig latent edge:
 lnmMod_EGA <- lnmMod_EGA %>% runmodel %>% prune(alpha = 0.05)
