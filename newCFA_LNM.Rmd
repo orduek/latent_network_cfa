@@ -87,10 +87,7 @@ nrow(pclItems_noCluster)
 <br><br><br>
 
 ## 3.  Compare different estimation techniques
-
-We compare several models to set the one's we would use thorugh the rest of analysis  
-First we do it on the PCL items alone (whole 150k)  
-We use three different method to estimate GGMs
+### This part was omitted - as all techniques are highly correlated with each other. 
 
 ```{r eval = TRUE, results = 'hide', echo=FALSE}
 # Rename dataset
@@ -107,46 +104,12 @@ Plot
 ```{r, echo=FALSE}
 g2 <- plot(n2, legend.cex=.5, vsize=7)
 ```
-<br>
-Severely skewed data, so we use Spearman over polychoric correlations here, as recommended (https://psycnet.apa.org/record/2018-13501-001)  
-<br><br>
-### B. Gaussian Graphical Model, regularized & thresholded
-```{r eval=TRUE, results ='hide', echo=FALSE, message=FALSE}
-n3 <- estimateNetwork(df2, default="EBICglasso", corMethod = "cor", corArgs = list(method="spearman"), threshold=TRUE)
-```
-Plot
-<br>
-```{r, echo=FALSE}
-g3 <- plot(n3, layout=g2$layout, legend.cex=.5, vsize=7)
-```
-<br><br>
-### C. Robustness: use new estimation procedure ggmModSelect (http://psychosystems.org/qgraph_1.5)
-```{r eval = TRUE, results = 'hide', echo=FALSE, message=FALSE}
-n4 <- estimateNetwork(df2, default="ggmModSelect", corMethod = "cor", corArgs = list(method="spearman"))
-```
-Plot
-<br>
-```{r, echo=FALSE}
-g4 <- plot(n4, layout=g2$layout, legend.cex=.5, vsize=7)
-```
-<br><br>
-#### Correlate the different networks with the first network (EBIC, spearman) to check similarity
-```{r}
-cor(vechs(n2$graph), vechs(n4$graph)) # 0.997
-cor(vechs(n2$graph), vechs(n4$graph), method="spearman") # 0.993
-cor(vechs(n2$graph), vechs(n3$graph), method="spearman") #0.99
-cor(vechs(n4$graph), vechs(n3$graph), method="spearman") #0.989
-```
-Looks like all networks are highly correlated with each other. 
-
-### Tobias - you have removed the predictability analysis here - do you both think its unnecessary?
-### T: I think it is not necessary, because predictability for LNMs do not exist - but what do you think KI? 
-### O: I accept Tobias's comment, KI? 
 
 <br><br><br>
 
 ## 4. Estiamte Networks incl. centrality and stability analyses
 Define 5-factor PTSD model following: Harpaz-Rotem, I., Tsai, J., Pietrzak, R. H., & Hoff, R. (2014).
+
 ```{r network_pcl, eval=TRUE, echo=FALSE, message=FALSE, results='hide'}
 gr1 <- list("Re-experiencing"=c(1:5), "Avoidance"=c(6:7), "Emotional numbing"=c(8:12),
             "Dysphoric arousal"=c(13:15), "Anxious arousal"=c(16:17)) 
@@ -231,8 +194,6 @@ plot bootversion
 #plot(bootEGA_pcl, theme="colorblind")
 ```
 
-# Or: I think we can remove the TMFG, unless anyone thinks its relevant
-# Tobias: I think so too
 
 ### B. EGA with 5 factor defined -  
 
